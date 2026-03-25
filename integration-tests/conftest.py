@@ -55,6 +55,31 @@ def insights_core_workaround():
     (through inherited file descriptor) that belongs to the user is not allowed.
     This Workaround fixture allows these actions in the active SELinux policy.
     """
+          # Check if SELinux is available and enabled
+      try:
+          result = subprocess.run(
+              ["getenforce"],
+              capture_output=True,
+              text=True,
+              timeout=5
+          )
+          selinux_status = result.stdout.strip()
+
+          if result.returncode != 0 or selinux_status in ["Disabled", ""]:
+              logger.warning(
+                  f"SELinux not available or disabled (status: {selinux_status}), "
+                  "skipping insights_core workaround"
+              )
+              yield
+              return
+      except (FileNotFoundError, subprocess.TimeoutExpired) as e:
+          logger.warning(
+              f"SELinux tools not installed or not responding: {e}, "
+              "skipping insights_core workaround"
+          )
+          yield
+          return
+
     policy = """module core_output 1.0;
 
 require {

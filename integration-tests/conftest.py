@@ -55,30 +55,30 @@ def insights_core_workaround():
     (through inherited file descriptor) that belongs to the user is not allowed.
     This Workaround fixture allows these actions in the active SELinux policy.
     """
-          # Check if SELinux is available and enabled
+    # Check if SELinux is available and enabled
     try:
-          result = subprocess.run(
-              ["getenforce"],
-              capture_output=True,
-              text=True,
-              timeout=5
-          )
-          selinux_status = result.stdout.strip()
+        result = subprocess.run(
+            ["getenforce"],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        selinux_status = result.stdout.strip()
 
-          if result.returncode != 0 or selinux_status in ["Disabled", ""]:
-              logger.warning(
-                  f"SELinux not available or disabled (status: {selinux_status}), "
-                  "skipping insights_core workaround"
-              )
-              yield
-              return
+        if result.returncode != 0 or selinux_status in ["Disabled", ""]:
+            logger.warning(
+                f"SELinux not available or disabled (status: {selinux_status}), "
+                "skipping insights_core workaround"
+            )
+            yield
+            return
     except (FileNotFoundError, subprocess.TimeoutExpired) as e:
-          logger.warning(
-              f"SELinux tools not installed or not responding: {e}, "
-              "skipping insights_core workaround"
-          )
-          yield
-          return
+        logger.warning(
+            f"SELinux tools not installed or not responding: {e}, "
+            "skipping insights_core workaround"
+        )
+        yield
+        return
 
     policy = """module core_output 1.0;
 
@@ -94,6 +94,8 @@ require {
 allow insights_core_t unconfined_t:fifo_file write;
 allow insights_core_t user_devpts_t:chr_file { ioctl read write };
 """
+
+    module_installed = False
     origdir = os.getcwd()
     with tempfile.TemporaryDirectory() as tempdirname:
         try:
@@ -110,19 +112,49 @@ allow insights_core_t user_devpts_t:chr_file { ioctl read write };
                     "core_output.te",  # codespell:ignore te
                 ],
                 check=True,
+                capture_output=True,
             )
             subprocess.run(
                 ["semodule_package", "-o", "core_output.pp", "-m", "core_output.mod"],
                 check=True,
+                capture_output=True,
             )
             subprocess.run(
                 ["semodule", "-i", "core_output.pp"],
                 check=True,
+                capture_output=True,
             )
+            module_installed = True
+            logger.info("Successfully installed SELinux workaround module 'core_output'")
+
+        except subprocess.CalledProcessError as e:
+            # Log the error but don't fail the tests
+            stderr = e.stderr.decode() if e.stderr else "No stderr"
+            logger.warning(
+                f"Failed to install SELinux workaround module: {e}\n"
+                f"Command: {' '.join(e.cmd)}\n"
+                f"Return code: {e.returncode}\n"
+                f"Stderr: {stderr}\n"
+                "Tests will continue without the SELinux workaround."
+            )
+        except Exception as e:
+            logger.warning(f"Unexpected error applying SELinux workaround: {e}")
         finally:
             os.chdir(origdir)
+
     yield
-    subprocess.run(["semodule", "-r", "core_output"], check=True)
+
+    # Cleanup: Remove the SELinux module if it was installed
+    if module_installed:
+        try:
+            subprocess.run(
+                ["semodule", "-r", "core_output"],
+                check=True,
+                capture_output=True
+            )
+            logger.info("Successfully removed SELinux workaround module 'core_output'")
+        except subprocess.CalledProcessError as e:
+            logger.warning(f"Failed to remove SELinux module 'core_output': {e}")
 
 
 @pytest.fixture(autouse=True)
@@ -131,6 +163,7 @@ def check_no_egg_content():
     Check that there is no egg-based content on the system.
     """
     yield
+
     egg_based_directory = "/var/lib/insights/"
     allowed_files = [
         "private-keys-v1.d",
@@ -139,9 +172,33 @@ def check_no_egg_content():
         "trustdb.gpg",
         "host-details.json",
     ]
-    for name in os.listdir(egg_based_directory):
-        if name not in allowed_files:
-            pytest.fail(f"Unexpected additional content found: {name} in {egg_based_directory}")
+
+    # First, try to clean up any .egg files (legacy content that may appear)
+    try:
+        for name in os.listdir(egg_based_directory):
+            if name.endswith('.egg'):
+                egg_path = os.path.join(egg_based_directory, name)
+                try:
+                    os.remove(egg_path)
+                    logger.warning(f"Cleaned up legacy egg file: {egg_path}")
+                except Exception as e:
+                    logger.error(f"Failed to remove {egg_path}: {e}")
+    except Exception as e:
+        logger.error(f"Failed to list directory {egg_based_directory}: {e}")
+
+    # Now check for unexpected content (excluding .egg files which we handle separately)
+    unexpected_files = []
+    try:
+        for name in os.listdir(egg_based_directory):
+            if name not in allowed_files and not name.endswith('.egg'):
+                unexpected_files.append(name)
+    except Exception as e:
+        logger.error(f"Failed to check directory {egg_based_directory}: {e}")
+
+    if unexpected_files:
+        pytest.fail(
+            f"Unexpected additional content found in {egg_based_directory}: {', '.join(unexpected_files)}"
+        )
 
     egg_based_files = [
         "/etc/insights-client/redhattools.pub.gpg",

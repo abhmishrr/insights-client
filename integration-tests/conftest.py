@@ -56,7 +56,7 @@ def insights_core_workaround():
     This Workaround fixture allows these actions in the active SELinux policy.
     """
           # Check if SELinux is available and enabled
-      try:
+    try:
           result = subprocess.run(
               ["getenforce"],
               capture_output=True,
@@ -72,7 +72,7 @@ def insights_core_workaround():
               )
               yield
               return
-      except (FileNotFoundError, subprocess.TimeoutExpired) as e:
+    except (FileNotFoundError, subprocess.TimeoutExpired) as e:
           logger.warning(
               f"SELinux tools not installed or not responding: {e}, "
               "skipping insights_core workaround"

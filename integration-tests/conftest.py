@@ -331,6 +331,33 @@ def add_known_avcs_to_skiplist(avc_checker):
         }
     )  # Testing farm misconfiguration: https://issues.redhat.com/browse/TFT-4293
 
+    # Network connection from insights_client_t to https port
+    avc_checker.skip_avc_entry_by_fields(
+        {
+            "subj": "system_u:system_r:insights_client_t:s0",
+            "permission": "name_connect",
+            "obj": "system_u:object_r:http_port_t:s0",
+        }
+    )  # insights-client needs to connect to Red Hat servers over HTTPS
+
+    # Cache directory access
+    avc_checker.skip_avc_entry_by_fields(
+        {
+            "subj": "system_u:system_r:insights_client_t:s0",
+            "permission": "getattr",
+            "obj": "system_u:object_r:insights_core_cache_t:s0",
+        }
+    )  # insights-client accessing insights-core cache directory
+
+    # Temp directory cleanup
+    avc_checker.skip_avc_entry_by_fields(
+        {
+            "subj": "system_u:system_r:insights_client_t:s0",
+            "permission": "rmdir",
+            "obj": "system_u:object_r:insights_client_tmp_t:s0",
+        }
+    )  # insights-client cleaning up its own temp directories
+
 
 @pytest.fixture(autouse=True)
 def check_avcs(request):

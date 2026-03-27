@@ -184,8 +184,33 @@ allow insights_core_t user_devpts_t:chr_file { ioctl read write };
 def check_no_egg_content():
     """
     Check that there is no egg-based content on the system.
+
+    Note: insights-core < 3.8 still requires .egg files for version detection.
+    This fixture handles this gracefully by skipping egg cleanup when using
+    older insights-core versions that need them.
     """
     yield
+
+    # Check if insights-core version supports RPM-based operation (no eggs needed)
+    insights_core_needs_eggs = False
+    try:
+        result = subprocess.run(
+            ["rpm", "-q", "--queryformat", "%{VERSION}", "insights-core"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        core_version = result.stdout.strip()
+        # insights-core < 3.8 still needs .egg files
+        if core_version.startswith("3.7") or core_version.startswith("3.6"):
+            insights_core_needs_eggs = True
+            logger.info(
+                f"insights-core {core_version} requires .egg files for version detection. "
+                "Skipping egg cleanup."
+            )
+    except subprocess.CalledProcessError:
+        logger.warning("Could not determine insights-core version, skipping egg cleanup")
+        insights_core_needs_eggs = True
 
     egg_based_directory = "/var/lib/insights/"
     allowed_files = [
@@ -196,24 +221,28 @@ def check_no_egg_content():
         "host-details.json",
     ]
 
-    # First, try to clean up any .egg and .egg.asc files (legacy content that may appear)
-    try:
-        for name in os.listdir(egg_based_directory):
-            if name.endswith('.egg') or name.endswith('.egg.asc'):
-                egg_path = os.path.join(egg_based_directory, name)
-                try:
-                    os.remove(egg_path)
-                    logger.warning(f"Cleaned up legacy egg file: {egg_path}")
-                except Exception as e:
-                    logger.error(f"Failed to remove {egg_path}: {e}")
-    except Exception as e:
-        logger.error(f"Failed to list directory {egg_based_directory}: {e}")
+    # Only clean up .egg files if insights-core doesn't need them
+    if not insights_core_needs_eggs:
+        try:
+            for name in os.listdir(egg_based_directory):
+                if name.endswith('.egg') or name.endswith('.egg.asc'):
+                    egg_path = os.path.join(egg_based_directory, name)
+                    try:
+                        os.remove(egg_path)
+                        logger.warning(f"Cleaned up legacy egg file: {egg_path}")
+                    except Exception as e:
+                        logger.error(f"Failed to remove {egg_path}: {e}")
+        except Exception as e:
+            logger.error(f"Failed to list directory {egg_based_directory}: {e}")
+    else:
+        # With old insights-core, .egg files are expected, so add them to allowed list
+        allowed_files.extend(["last_stable.egg", "newest.egg", "last_stable.egg.asc", "newest.egg.asc"])
 
-    # Now check for unexpected content (excluding .egg files which we handle separately)
+    # Check for unexpected content
     unexpected_files = []
     try:
         for name in os.listdir(egg_based_directory):
-            if name not in allowed_files and not name.endswith('.egg'):
+            if name not in allowed_files and not (insights_core_needs_eggs and name.endswith('.egg')):
                 unexpected_files.append(name)
     except Exception as e:
         logger.error(f"Failed to check directory {egg_based_directory}: {e}")
@@ -224,23 +253,22 @@ def check_no_egg_content():
         )
 
     # Clean up legacy egg-based files in /etc/insights-client/
-    # These files should have been removed by insights-client package but may still exist
-    # from old installations. Clean them up to prevent test failures.
-    egg_based_files = [
-        "/etc/insights-client/redhattools.pub.gpg",
-        "/etc/insights-client/rpm.egg",
-        "/etc/insights-client/rpm.egg.asc",
-        "/etc/insights-client/.insights-core.etag",
-        "/etc/insights-client/.insights-core-gpg-sig.etag",
-    ]
-    for file_path in egg_based_files:
-        if os.path.exists(file_path):
-            try:
-                os.remove(file_path)
-                logger.warning(f"Cleaned up legacy egg-based file: {file_path}")
-            except Exception as e:
-                logger.error(f"Failed to remove {file_path}: {e}")
-                # Don't fail the test if cleanup fails - log and continue
+    # Only if insights-core doesn't need them
+    if not insights_core_needs_eggs:
+        egg_based_files = [
+            "/etc/insights-client/redhattools.pub.gpg",
+            "/etc/insights-client/rpm.egg",
+            "/etc/insights-client/rpm.egg.asc",
+            "/etc/insights-client/.insights-core.etag",
+            "/etc/insights-client/.insights-core-gpg-sig.etag",
+        ]
+        for file_path in egg_based_files:
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                    logger.warning(f"Cleaned up legacy egg-based file: {file_path}")
+                except Exception as e:
+                    logger.error(f"Failed to remove {file_path}: {e}")
 
 
 def check_is_bootc_system():

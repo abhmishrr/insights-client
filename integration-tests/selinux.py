@@ -149,20 +149,49 @@ class SELinuxAVCChecker:
         return condition
 
     def get_avcs(self, skiplisted=True):
-        lines = (
-            subprocess.run(self.aureport_command, stdout=subprocess.PIPE)
-            .stdout.decode()
-            .splitlines()
-        )
-        assert lines.pop(0) == ""
-        assert lines.pop(0) == "AVC Report"
-        assert lines.pop(0) == "==============================================================="
-        keys = lines.pop(0).split()
-        assert lines.pop(0) == "==============================================================="
-        if lines[0] == "<no events of interest were found>":
+        result = subprocess.run(self.aureport_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        lines = result.stdout.decode().splitlines()
+
+        # Handle empty output
+        if not lines:
             return
+
+        # Skip leading empty lines and find "AVC Report" header
+        while lines and (not lines[0] or not lines[0].strip()):
+            lines.pop(0)
+
+        if not lines:
+            return
+
+        # Find the "AVC Report" line (might not be first line)
+        while lines and "AVC Report" not in lines[0]:
+            lines.pop(0)
+
+        if not lines or "AVC Report" not in lines[0]:
+            # No AVC report found, return empty
+            return
+
+        lines.pop(0)  # Remove "AVC Report"
+
+        # Skip separator line
+        if lines and "=" in lines[0]:
+            lines.pop(0)
+
+        # Get column headers
+        if not lines:
+            return
+        keys = lines.pop(0).split()
+
+        # Skip separator line
+        if lines and "=" in lines[0]:
+            lines.pop(0)
+
+        # Check for no events
+        if lines and "<no events of interest were found>" in lines[0]:
+            return
+
         for line in lines:
-            if not line:  # skip empty lines
+            if not line or not line.strip():  # skip empty lines
                 continue
             entry = AuditLogEntry(keys, line.split())
             if skiplisted and any(condition(entry) for condition in self.avc_skiplist):

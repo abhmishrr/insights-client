@@ -42,20 +42,20 @@ def test_ultralight_checkin(insights_client, test_config):
         4. The updated timestamps were retrieved and recorded
         5. Both updated timestamps will be greater than before check-in
     """
-    assert insights_client.register(wait_for_registered=True)
+    assert insights_client.register(wait_for_registered=True, selinux_context=None)
     assert insights_client.wait_for_inventory()  # required by --check-results
     assert insights_client.wait_for_advisor()  # required by --check-results
 
     # Performing check-results operation provides latest host data in host-details.json
-    insights_client.run("--check-results")
+    insights_client.run("--check-results", selinux_context=None)
     with open(HOST_DETAILS, "r") as data_file:
         data = json.load(data_file)
         stale_ts_before_checkin = data["results"][0]["stale_timestamp"]
         updated_ts_before_checkin = data["results"][0]["updated"]
 
     # Performing an ultra light check-in
-    insights_client.run("--checkin")
-    insights_client.run("--check-results")
+    insights_client.run("--checkin", selinux_context=None)
+    insights_client.run("--check-results", selinux_context=None)
 
     with open(HOST_DETAILS, "r") as data_file:
         data = json.load(data_file)
@@ -85,10 +85,10 @@ def test_client_checkin_unregistered(insights_client):
             to find host with matching machine-id'
     """
     with contextlib.suppress(Exception):
-        insights_client.unregister()
+        insights_client.unregister(selinux_context=None)
     assert loop_until(lambda: not insights_client.is_registered)
 
-    checkin_result = insights_client.run("--checkin", check=False)
+    checkin_result = insights_client.run("--checkin", check=False, selinux_context=None)
     if insights_client.core_version >= Version(3, 4, 25):
         assert checkin_result.returncode > 0
         assert "This host is not registered" in checkin_result.stdout

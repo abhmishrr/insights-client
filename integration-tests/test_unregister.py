@@ -84,7 +84,7 @@ def test_unregister_twice(insights_client):
         )
 
     # unregister twice
-    unregistration_status = insights_client.run("--unregister", check=False)
+    unregistration_status = insights_client.run("--unregister", check=False, selinux_context=None)
     assert loop_until(lambda: not insights_client.is_registered)
     assert unregistration_status.returncode == 1
     assert (

@@ -38,7 +38,7 @@ def test_upload_pre_collected_archive(insights_client, tmp_path):
     archive_location = tmp_path / archive_name
 
     # Registering the client because upload can happen on registered system
-    insights_client.register()
+    insights_client.register(selinux_context=None)
     assert loop_until(lambda: insights_client.is_registered)
 
     # Running insights-client in offline mode to generate archive and save at tmp dir
@@ -84,7 +84,7 @@ def test_upload_wrong_content_type(insights_client, tmp_path):
     archive_location = tmp_path / archive_name
 
     # Registering the client because upload can happen on registered system
-    insights_client.register()
+    insights_client.register(selinux_context=None)
     assert loop_until(lambda: insights_client.is_registered)
 
     # Running insights-client in offline mode to generate archive and save at tmp dir
@@ -132,7 +132,7 @@ def test_upload_too_large_archive(insights_client, tmp_path):
         2. A large archive is created in the temporary directory
         3. The upload process fails with an appropriate message
     """
-    insights_client.register()
+    insights_client.register(selinux_context=None)
     assert loop_until(lambda: insights_client.is_registered)
 
     file_path = tmp_path / "large_file.tar.gz"
@@ -180,7 +180,7 @@ def test_upload_compressor_options(
         2. The archive is successfully generated
         3. The file has expected file extension
     """
-    insights_client.register()
+    insights_client.register(selinux_context=None)
     assert loop_until(lambda: insights_client.is_registered)
 
     # using --compressor option to generate and save archive

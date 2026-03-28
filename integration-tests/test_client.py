@@ -37,7 +37,7 @@ def test_client_files_permission(insights_client):
     file_last_upload = "/etc/insights-client/.lastupload"
     with contextlib.suppress(FileNotFoundError):
         os.remove(file_last_upload)  # performing a cleanup before test
-    insights_client.register()
+    insights_client.register(selinux_context=None)
     assert loop_until(lambda: insights_client.is_registered)
     assert oct(os.stat(file_last_upload).st_mode & 0o777) == "0o644"
 
@@ -104,7 +104,7 @@ def test_client_logfiles_mask(insights_client):
     """
     # It is necessary to perform some command using insights-client
     # to populate logs
-    insights_client.register()
+    insights_client.register(selinux_context=None)
     logfiles = glob.glob("/var/log/insights-client/*.log*")
     for logfile in logfiles:
         assert oct(os.stat(logfile).st_mode & 0o777) == "0o600"
@@ -173,13 +173,14 @@ def test_verify_logrotate_feature(insights_client):
      to /var/cache/insights-client/insights-test-date.tar.gz
      Insights archive retained in /var/cache/insights-client/insights-test-date.tar.gz
     """
-    reg_result = insights_client.run("--register", "--keep-archive")
+    reg_result = insights_client.run("--register", "--keep-archive", selinux_context=None)
     assert loop_until(lambda: insights_client.is_registered)
 
     archive_name = reg_result.stdout.split()[-1]
     insights_client.run(
         f"--payload={archive_name}",
         "--content-type=gz",
+        selinux_context=None,
     )
     number_of_log_files = len(os.listdir(logdir))  # count of files before rotation
 
@@ -213,14 +214,14 @@ def test_insights_details_file_exists(insights_client):
         4. The file /var/lib/insights/insights-client.json does not exists
     """
     output_file = "/var/lib/insights/insights-details.json"
-    insights_client.register(wait_for_registered=True)
+    insights_client.register(wait_for_registered=True, selinux_context=None)
     assert insights_client.wait_for_inventory()  # required by --check-results
     assert insights_client.wait_for_advisor()  # required by --check-results
 
     # Deleting file manually
     with contextlib.suppress(FileNotFoundError):
         os.remove(output_file)
-    insights_client.run("--check-results")
+    insights_client.run("--check-results", selinux_context=None)
     # Verify that insights-details.json is not remade on egg >= 3.6.2
     if insights_client.core_version < Version(3, 6, 2):
         assert os.path.isfile(output_file)

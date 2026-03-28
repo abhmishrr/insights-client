@@ -40,11 +40,11 @@ def test_set_ansible_host_info(insights_client, test_config):
     if "satellite614" in test_config.environment or "satellite615" in test_config.environment:
         pytest.skip(reason="Issue was fixed in Satellite 6.16 and upwards")
     # Register system against Satellite, and register insights through satellite
-    insights_client.register(wait_for_registered=True)
+    insights_client.register(wait_for_registered=True, selinux_context=None)
     assert insights_client.wait_for_inventory()
 
     # Update ansible-host
-    ret = insights_client.run("--ansible-host=foo.example.com", check=False)
+    ret = insights_client.run("--ansible-host=foo.example.com", check=False, selinux_context=None)
     assert "Could not update Ansible hostname" not in ret.stdout
     assert ret.returncode == 0
 
@@ -74,12 +74,12 @@ def test_no_upload(insights_client):
     archive_saved = "Archive saved at"
     upload_message = "Successfully uploaded report"
 
-    insights_client.register()
+    insights_client.register(selinux_context=None)
     assert loop_until(lambda: insights_client.is_registered)
 
     archive_file_before = glob.glob(f"{ARCHIVE_CACHE_DIRECTORY}/*.tar.gz")
 
-    no_upload_output = insights_client.run("--no-upload")
+    no_upload_output = insights_client.run("--no-upload", selinux_context=None)
     assert archive_saved in no_upload_output.stdout
     assert upload_message not in no_upload_output.stdout
 
@@ -223,9 +223,9 @@ def test_client_checkin_offline(insights_client):
         2. The command fails with a return code of 1 and output includes
             message 'ERROR: Cannot check-in in offline mode.'
     """
-    insights_client.register()
+    insights_client.register(selinux_context=None)
     assert loop_until(lambda: insights_client.is_registered)
-    checkin_result = insights_client.run("--offline", "--checkin", check=False)
+    checkin_result = insights_client.run("--offline", "--checkin", check=False, selinux_context=None)
     assert checkin_result.returncode == 1
     assert "ERROR: Cannot check-in in offline mode." in checkin_result.stderr
 
@@ -264,11 +264,11 @@ def test_client_diagnosis(insights_client):
     else:
         assert "Unable to get diagnosis data: 404" in diagnosis_result.stdout
     # Running diagnosis on registered system
-    insights_client.register()
+    insights_client.register(selinux_context=None)
     assert loop_until(lambda: insights_client.is_registered)
     with open("/etc/insights-client/machine-id", "r") as f:
         machine_id = f.read()
-    diagnosis_result = insights_client.run("--diagnosis")
+    diagnosis_result = insights_client.run("--diagnosis", selinux_context=None)
     diagnosis_data = json.loads(diagnosis_result.stdout)
     # verify that diagnosis contains correct machine id
     assert diagnosis_data["insights_id"] == machine_id
@@ -298,13 +298,13 @@ def test_check_show_results(insights_client):
     """
     os.chmod("/etc/ssh/sshd_config", 0o777)
 
-    insights_client.register(wait_for_registered=True)
+    insights_client.register(wait_for_registered=True, selinux_context=None)
     assert insights_client.wait_for_inventory()  # required by --check-results
     assert insights_client.wait_for_advisor()  # required by --check-results
 
     try:
-        insights_client.run("--check-results")
-        show_results = insights_client.run("--show-results")
+        insights_client.run("--check-results", selinux_context=None)
+        show_results = insights_client.run("--show-results", selinux_context=None)
 
         assert "hardening_ssh_config_perms|OPENSSH_HARDENING_CONFIG_PERMS" in show_results.stdout
         assert "Decreased security: OpenSSH config permissions" in show_results.stdout

@@ -63,7 +63,7 @@ def test_compliance_option(insights_client):
         in compliance_before_registration.stdout
     )
 
-    insights_client.register()
+    insights_client.register(selinux_context=None)
     assert loop_until(lambda: insights_client.is_registered)
 
     compliance_after_registration = insights_client.run("--compliance", check=False)
@@ -92,7 +92,7 @@ def test_compliance_policies_option(insights_client):
             assignable to any policy or ID of available policy is found and
             displayed
     """
-    insights_client.register()
+    insights_client.register(selinux_context=None)
     assert loop_until(lambda: insights_client.is_registered)
 
     compliance_policies = insights_client.run("--compliance-policies", check=False)

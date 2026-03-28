@@ -67,7 +67,7 @@ def test_register(insights_client):
         3. The output includes "Successfully uploaded report"
         4. The insights-client.timer is enabled and active
     """
-    register_result = insights_client.run("--register")
+    register_result = insights_client.run("--register", selinux_context=None)
     assert loop_until(lambda: insights_client.is_registered)
 
     assert "Starting to collect Insights data" in register_result.stdout
@@ -111,7 +111,7 @@ def test_register_auth_proxy(insights_client, test_config):
     insights_client.config.proxy = auth_proxy
     insights_client.config.save()
 
-    register_result = insights_client.run("--register", "--verbose")
+    register_result = insights_client.run("--register", "--verbose", selinux_context=None)
     assert loop_until(lambda: insights_client.is_registered)
     assert "Proxy Scheme: http://" in register_result.stdout
     assert f"Proxy Location: {proxy_host}" in register_result.stdout
@@ -150,7 +150,7 @@ def test_register_noauth_proxy(insights_client, test_config):
     insights_client.config.proxy = no_auth_proxy
     insights_client.config.save()
 
-    register_result = insights_client.run("--register", "--verbose")
+    register_result = insights_client.run("--register", "--verbose", selinux_context=None)
     assert loop_until(lambda: insights_client.is_registered)
     assert f"CONF Proxy: {no_auth_proxy}" in register_result.stdout
     assert_systemd_insights_client_timer_enabled_and_active()
@@ -183,7 +183,7 @@ def test_machineid_exists_only_when_registered(insights_client):
     assert loop_until(lambda: not insights_client.is_registered)
     assert not os.path.exists(MACHINE_ID_FILE)
 
-    res = insights_client.run(check=False)
+    res = insights_client.run(check=False, selinux_context=None)
     assert (
         "This host is unregistered. Use --register to register this host" in res.stdout
         or "This host has not been registered. Use --register to register this host" in res.stdout
@@ -191,7 +191,7 @@ def test_machineid_exists_only_when_registered(insights_client):
     assert res.returncode != 0
     assert not os.path.exists(MACHINE_ID_FILE)
 
-    insights_client.register()
+    insights_client.register(selinux_context=None)
     assert loop_until(lambda: insights_client.is_registered)
     assert os.path.exists(MACHINE_ID_FILE)
     assert_systemd_insights_client_timer_enabled_and_active()
@@ -225,7 +225,7 @@ def test_machineid_changes_on_new_registration(insights_client):
             should change
         5. The insights-client.timer is enabled and active
     """
-    insights_client.register()
+    insights_client.register(selinux_context=None)
     with open(MACHINE_ID_FILE, "r") as f:
         machine_id_old = f.read()
     assert_systemd_insights_client_timer_enabled_and_active()
@@ -233,7 +233,7 @@ def test_machineid_changes_on_new_registration(insights_client):
     insights_client.unregister()
     assert not os.path.exists(MACHINE_ID_FILE)
 
-    insights_client.register()
+    insights_client.register(selinux_context=None)
     with open(MACHINE_ID_FILE, "r") as f:
         machine_id_new = f.read()
     assert_systemd_insights_client_timer_enabled_and_active()
@@ -271,7 +271,7 @@ def test_double_registration(insights_client):
     """
     assert loop_until(lambda: not insights_client.is_registered)
 
-    insights_client.register()
+    insights_client.register(selinux_context=None)
     assert os.path.exists(MACHINE_ID_FILE)
     with open(MACHINE_ID_FILE, "r") as f:
         machine_id_old = f.read()
@@ -362,7 +362,7 @@ def test_registered_and_unregistered_files_are_created_and_deleted(insights_clie
     assert loop_until(lambda: not insights_client.is_registered)
     assert not os.path.exists("/etc/insights-client/.registered")
 
-    insights_client.register()
+    insights_client.register(selinux_context=None)
     assert loop_until(lambda: insights_client.is_registered)
     assert os.path.exists("/etc/insights-client/.registered")
     assert not os.path.exists("/etc/insights-client/.unregistered")

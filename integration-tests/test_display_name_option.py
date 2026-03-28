@@ -57,7 +57,7 @@ def test_display_name(insights_client, test_config):
     if "satellite" in test_config.environment:
         pytest.skip(reason="Test is not applicable to Satellite")
     new_hostname = generate_unique_hostname()
-    insights_client.run("--register")
+    insights_client.run("--register", selinux_context=None)
     assert loop_until(lambda: insights_client.is_registered)
 
     response = insights_client.run("--display-name", new_hostname)
@@ -192,7 +192,7 @@ def test_invalid_display_name(invalid_display_name, insights_client):
             'Could not update display name'
         4. The display_name in host details matches the saved original
     """
-    insights_client.run("--register")
+    insights_client.run("--register", selinux_context=None)
     assert loop_until(lambda: insights_client.is_registered)
 
     insights_client.run("--check-results")
@@ -259,7 +259,7 @@ def test_display_name_disable_autoconfig_and_autoupdate(insights_client, test_co
 
     # register insights
     try:
-        status = insights_client.run("--register")
+        status = insights_client.run("--register", selinux_context=None)
     except subprocess.CalledProcessError as e:
         if "certificate verify failed" in e.stdout.lower() or "certificate verify failed" in str(e):
             pytest.skip("Skipping test due to SSL certificate verification failure")

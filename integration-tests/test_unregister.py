@@ -32,10 +32,10 @@ def test_unregister(insights_client):
             outputs "Successfully unregistered from the Red Hat Insights Service"
         3. Client unregistration is confirmed
     """
-    insights_client.register()
+    insights_client.register(selinux_context=None)
     assert loop_until(lambda: insights_client.is_registered)
 
-    unregistration_status = insights_client.run("--unregister")
+    unregistration_status = insights_client.run("--unregister", selinux_context=None)
     if insights_client.core_version >= Version(3, 5, 11):
         assert "Successfully unregistered this host." in unregistration_status.stdout
     else:
@@ -69,11 +69,11 @@ def test_unregister_twice(insights_client):
         3. Command returns exit code 1 and outputs "This host is not registered,
             unregistration is not applicable."
     """
-    insights_client.register()
+    insights_client.register(selinux_context=None)
     assert loop_until(lambda: insights_client.is_registered)
 
     # unregister once
-    unregistration_status = insights_client.run("--unregister")
+    unregistration_status = insights_client.run("--unregister", selinux_context=None)
     assert loop_until(lambda: not insights_client.is_registered)
     if insights_client.core_version >= Version(3, 5, 11):
         assert "Successfully unregistered this host." in unregistration_status.stdout

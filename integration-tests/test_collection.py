@@ -280,7 +280,7 @@ def test_cmd_timeout(insights_client):
     """
     cmd_output_message = "Executing: [['timeout', '-s', '9', '10'"
 
-    insights_client.register()
+    insights_client.register(selinux_context=None)
     assert loop_until(lambda: insights_client.is_registered)
 
     insights_client.config.cmd_timeout = 10

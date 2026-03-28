@@ -90,7 +90,7 @@ def test_register_with_ros(insights_client):
     :expectedresults:
         1. Verify the client successfully registered
     """
-    register_result = insights_client.run("--register")
+    register_result = insights_client.run("--register", selinux_context=None)
     assert loop_until(lambda: insights_client.is_registered)
     assert register_result.returncode == 0
 
@@ -121,7 +121,7 @@ def test_upload_pre_collected_archive_with_ros(insights_client, tmp_path):
     archive_location = tmp_path / archive_name
 
     # Registering the client because upload can happen on registered system
-    insights_client.register()
+    insights_client.register(selinux_context=None)
     assert loop_until(lambda: insights_client.is_registered)
 
     # Running insights-client in offline mode to generate archive and save at tmp dir

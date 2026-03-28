@@ -73,7 +73,7 @@ def test_output_file_non_existing_path(insights_client):
     """
     archive_location = "/not-existing-dir/archive_file.tar.gz"
     parent_dir = os.path.dirname(archive_location)
-    cmd_result = insights_client.run(f"--output-file={archive_location}", check=False)
+    cmd_result = insights_client.run(f"--output-file={archive_location}", check=False, selinux_context=None)
     assert cmd_result.returncode == 1
     assert (
         f"Cannot write to {archive_location}. Parent"
@@ -99,7 +99,7 @@ def test_output_dir_without_specifying_a_path(insights_client):
         2. The command fails with a return code of 1
         3. The error message is as expected
     """
-    cmd_result = insights_client.run("--output-file=", check=False)
+    cmd_result = insights_client.run("--output-file=", check=False, selinux_context=None)
     assert cmd_result.returncode == 1
     assert "ERROR: --output-file cannot be empty" in cmd_result.stderr
 
@@ -128,7 +128,7 @@ def test_output_specifying_both_dir_and_file(insights_client, tmp_path):
     output_file = tmp_path / "output_file.tar.gz"
     output_dir = tmp_path
     cmd_result = insights_client.run(
-        f"--output-file={output_file}", f"--output-dir={output_dir}", check=False
+        f"--output-file={output_file}", f"--output-dir={output_dir}", check=False, selinux_context=None
     )
     assert cmd_result.returncode == 1
     assert "Specify only one: --output-dir or --output-file." in cmd_result.stderr
@@ -157,7 +157,7 @@ def test_output_file_with_relative_path(insights_client):
         4. The error message is as expected
     """
     relative_path = os.path.realpath("")
-    cmd_result = insights_client.run(f"--output-file={relative_path}", check=False)
+    cmd_result = insights_client.run(f"--output-file={relative_path}", check=False, selinux_context=None)
     assert cmd_result.returncode == 1
     assert f"{relative_path} is a directory." in cmd_result.stderr
 
@@ -216,7 +216,7 @@ def test_output_dir_creates_archive_for_directory(insights_client, tmp_path):
     """
     directory = "/tmp/directory/"
     try:
-        cmd_result = insights_client.run(f"--output-file={directory}", check=False)
+        cmd_result = insights_client.run(f"--output-file={directory}", check=False, selinux_context=None)
         assert os.path.abspath(directory[0:-1] + ".tar.gz") in cmd_result.stdout
     finally:
         os.remove(os.path.abspath(directory[0:-1] + ".tar.gz"))
@@ -249,7 +249,7 @@ def test_output_file_already_exists(insights_client, tmp_path):
         with tarfile.open(output_file, "w:gz"):
             pass
 
-    cmd_result = insights_client.run(f"--output-file={output_file}", check=False)
+    cmd_result = insights_client.run(f"--output-file={output_file}", check=False, selinux_context=None)
     assert cmd_result.returncode == 1
     assert f"ERROR: File {output_file} already exists." in cmd_result.stderr
 

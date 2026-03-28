@@ -141,7 +141,7 @@ def test_upload_too_large_archive(insights_client, tmp_path):
         f.seek(int(file_size) + 1)
         f.write(b"\0")
 
-    upload_result = insights_client.run(f"--payload={file_path}", "--content-type=gz", check=False)
+    upload_result = insights_client.run(f"--payload={file_path}", "--content-type=gz", check=False, selinux_context=None)
 
     assert "Archive is too large to upload" in upload_result.stdout
     assert "Upload failed." in upload_result.stdout
@@ -184,7 +184,7 @@ def test_upload_compressor_options(
     assert loop_until(lambda: insights_client.is_registered)
 
     # using --compressor option to generate and save archive
-    command_result = insights_client.run(f"--compressor={compressor}", "--no-upload")
+    command_result = insights_client.run(f"--compressor={compressor}", "--no-upload", selinux_context=None)
     archive_name = command_result.stdout.split()[-1]
 
     # Verifying that archive is created with expected extension
@@ -192,7 +192,7 @@ def test_upload_compressor_options(
     assert (os.path.splitext(archive_name)[0]).endswith(".tar")
 
     # Now try to upload the pre-collected archive
-    upload_result = insights_client.run(f"--payload={archive_name}", f"--content-type={compressor}")
+    upload_result = insights_client.run(f"--payload={archive_name}", f"--content-type={compressor}", selinux_context=None)
     assert "Uploading Insights data." in upload_result.stdout
     assert "Successfully uploaded report" in upload_result.stdout
 
@@ -223,7 +223,7 @@ def test_retries(insights_client):
         5. Each of the retry failed with expected error message
         6. the final error message is as expected
     """
-    reg_result = insights_client.run("--register", "--keep-archive")
+    reg_result = insights_client.run("--register", "--keep-archive", selinux_context=None)
     assert loop_until(lambda: insights_client.is_registered)
 
     # Save the archive, to be used while upload operation
@@ -236,7 +236,7 @@ def test_retries(insights_client):
 
     # Now try to upload the pre-collected archive with retry=2 , default content=type gz
     upload_result = insights_client.run(
-        f"--payload={archive_name}", "--content-type={gz}", "--retry=2", check=False
+        f"--payload={archive_name}", "--content-type={gz}", "--retry=2", check=False, selinux_context=None
     )
 
     assert "Upload attempt 1 of 2 failed" in upload_result.stdout
@@ -267,7 +267,7 @@ def test_retries_not_happening_on_unrecoverable_errors(insights_client):
         4. The process fails with an appropriate message
         5. No retries occurred
     """
-    reg_result = insights_client.run("--register", "--keep-archive")
+    reg_result = insights_client.run("--register", "--keep-archive", selinux_context=None)
     assert loop_until(lambda: insights_client.is_registered)
 
     # Save the archive, to be used while upload operation
@@ -279,6 +279,7 @@ def test_retries_not_happening_on_unrecoverable_errors(insights_client):
         "--content-type=invalid-type",
         "--retry=2",
         check=False,
+        selinux_context=None,
     )
     assert "Upload failed." in upload_result.stdout
     assert "Upload attempt 1 of 2 failed" not in upload_result.stdout

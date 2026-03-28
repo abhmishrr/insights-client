@@ -60,13 +60,13 @@ def test_display_name(insights_client, test_config):
     insights_client.run("--register", selinux_context=None)
     assert loop_until(lambda: insights_client.is_registered)
 
-    response = insights_client.run("--display-name", new_hostname)
+    response = insights_client.run("--display-name", new_hostname, selinux_context=None)
     logger.debug(f"response from console {response}")
 
     assert f"Display name updated to {new_hostname}" in response.stdout
 
     def display_name_changed():
-        insights_client.run("--check-results")
+        insights_client.run("--check-results", selinux_context=None)
         host_details = read_host_details()
         logger.debug(f"host details {host_details}")
         record = host_details["results"][0]
@@ -96,10 +96,10 @@ def test_register_with_display_name(insights_client):
     """
     unique_hostname = generate_unique_hostname()
 
-    status = insights_client.run("--register", "--display-name", unique_hostname)
+    status = insights_client.run("--register", "--display-name", unique_hostname, selinux_context=None)
     assert loop_until(lambda: insights_client.is_registered)
     assert unique_hostname in status.stdout
-    insights_client.run("--check-results")
+    insights_client.run("--check-results", selinux_context=None)
     host_details = read_host_details()
     logger.debug(f"content of host-details.json {host_details}")
 
@@ -139,11 +139,11 @@ def test_register_twice_with_different_display_name(insights_client, test_config
     unique_hostname_02 = generate_unique_hostname()
 
     with subtests.test(msg="the first registration"):
-        status = insights_client.run("--register", "--display-name", unique_hostname)
+        status = insights_client.run("--register", "--display-name", unique_hostname, selinux_context=None)
         assert unique_hostname in status.stdout
 
         assert loop_until(lambda: insights_client.is_registered)
-        insights_client.run("--check-results")
+        insights_client.run("--check-results", selinux_context=None)
         host_details = read_host_details()
         record = host_details["results"][0]
         assert "display_name" in record.keys()
@@ -152,12 +152,12 @@ def test_register_twice_with_different_display_name(insights_client, test_config
 
     (status, host_details, record) = (None, None, None)
     with subtests.test(msg="The second registration"):
-        status = insights_client.run("--register", "--display-name", unique_hostname_02)
+        status = insights_client.run("--register", "--display-name", unique_hostname_02, selinux_context=None)
         registration_message = "This host has already been registered"
         assert registration_message in status.stdout
 
         assert loop_until(lambda: insights_client.is_registered)
-        insights_client.run("--check-results")
+        insights_client.run("--check-results", selinux_context=None)
         host_details = read_host_details()
         logger.debug(f"content of host-details.json: {host_details}")
         record = host_details["results"][0]
@@ -195,15 +195,15 @@ def test_invalid_display_name(invalid_display_name, insights_client):
     insights_client.run("--register", selinux_context=None)
     assert loop_until(lambda: insights_client.is_registered)
 
-    insights_client.run("--check-results")
+    insights_client.run("--check-results", selinux_context=None)
     host_details = read_host_details()
     origin_display_name = host_details["results"][0]["display_name"]
 
-    response = insights_client.run("--display-name", invalid_display_name, check=False)
+    response = insights_client.run("--display-name", invalid_display_name, check=False, selinux_context=None)
     assert response.returncode == 1
     assert "Could not update display name" in response.stdout
 
-    insights_client.run("--check-results")
+    insights_client.run("--check-results", selinux_context=None)
     host_details = read_host_details()
     logger.debug(f"content of host-details.json {host_details}")
 
@@ -268,7 +268,7 @@ def test_display_name_disable_autoconfig_and_autoupdate(insights_client, test_co
     assert unique_hostname in status.stdout
 
     # check the display name on CRC
-    insights_client.run("--check-results")
+    insights_client.run("--check-results", selinux_context=None)
     host_details = read_host_details()
     logger.debug(f"content of host-details.json {host_details}")
     record = host_details["results"][0]

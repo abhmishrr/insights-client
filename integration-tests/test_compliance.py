@@ -54,7 +54,7 @@ def test_compliance_option(insights_client):
         3. The output of the command either informs user that system is not associated
             with any policies or the report will be successfully uploaded
     """
-    compliance_before_registration = insights_client.run("--compliance", check=False)
+    compliance_before_registration = insights_client.run("--compliance", check=False, selinux_context=None)
     assert compliance_before_registration.returncode == 1
     assert (
         "This host is unregistered. Use --register to register this host"
@@ -66,7 +66,7 @@ def test_compliance_option(insights_client):
     insights_client.register(selinux_context=None)
     assert loop_until(lambda: insights_client.is_registered)
 
-    compliance_after_registration = insights_client.run("--compliance", check=False)
+    compliance_after_registration = insights_client.run("--compliance", check=False, selinux_context=None)
     if compliance_after_registration.returncode == 1:
         assert "System is not associated with any policies." in compliance_after_registration.stdout
     else:
@@ -95,7 +95,7 @@ def test_compliance_policies_option(insights_client):
     insights_client.register(selinux_context=None)
     assert loop_until(lambda: insights_client.is_registered)
 
-    compliance_policies = insights_client.run("--compliance-policies", check=False)
+    compliance_policies = insights_client.run("--compliance-policies", check=False, selinux_context=None)
     if "An error has occurred while communicating with the API" in compliance_policies.stdout:
         pytest.skip(reason="Error communicating with API")
     if compliance_policies.returncode == 1:

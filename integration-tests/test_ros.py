@@ -30,12 +30,23 @@ def test_ros_install():
         Ensure that the insights-client-ros can be successfully installed
     :tags: Tier 1
     :steps:
-        1. Try to install insights-client-ros
-        2. Check that ros_collect is set to true in insights-client.conf
+        1. Ensure insights-client config file has proper permissions
+        2. Try to install insights-client-ros
+        3. Check that ros_collect is set to true in insights-client.conf
     :expectedresults:
-        1. Subpackage insights-client-ros is installed
-        2. Field ros_collect is set to true in insights-client.conf
+        1. Config file exists and is writable
+        2. Subpackage insights-client-ros is installed
+        3. Field ros_collect is set to true in insights-client.conf
     """
+    # Ensure config file has proper permissions before package installation
+    # (insights-client dependency should already create this file)
+    config_file = Path(CONFIG_FILE)
+    assert config_file.exists(), f"{CONFIG_FILE} does not exist - insights-client not properly installed"
+
+    # Ensure file is writable for the %post ros scriptlet
+    subprocess.run(["chmod", "644", str(config_file)], check=True)
+    subprocess.run(["chown", "root:root", str(config_file)], check=True)
+
     install = subprocess.run(["dnf", "install", "-y", PACKAGE], capture_output=True, text=True)
     assert install.returncode == 0, f"{PACKAGE} was not installed"
 
